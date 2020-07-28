@@ -1,0 +1,77 @@
+#!/bin/bash
+
+#init public parameters
+#arguement "SS512","MNT159","MNT202","MNT224","MNT359","BN160","BN256", "BN512"
+mks=$(./sbox init SS512)
+array=(${mks//,/ })
+pp=${array[0]}
+echo "pp : "
+echo $pp
+msk=${array[1]}
+echo "msk : "
+echo $msk
+#a sample output is in pp file
+
+#gen UUID for a attribute
+gattrs=("attr1" "attr2" "attr3" "attr4" "attr5" "attr6" "attr7" "attr8" "attr9" "attr10" "attr11" "attr12" "attr13" "attr14" "attr15" "attr16" "attr17" "attr18" "attr19" "attr20")
+attrs=""
+for attr in ${gattrs[*]}
+do
+	attrs=$attrs$attr","
+done
+attrs=${attrs%,*}
+#gen user keys
+cipher=$(./sbox genUKs $pp $msk $attrs)
+array=(${cipher//,/ })
+echo "attrs : "
+echo $attrs
+dk=${array[0]}
+echo "dk : "
+echo $dk
+tk=${array[1]}
+echo "tk : "
+echo $tk
+
+function testPolicy()
+{
+	#enc 
+	#input pp, policy, message; the policy is combined with attributes, '&', '|', '(', ')'
+	policy=$1
+	c=$(./sbox enc $pp $policy)
+	cs=(${c//,/ })
+	abec=${cs[0]}
+	m=${cs[1]}
+
+	#trans
+	abet=$(./sbox trans $pp $tk $abec)
+
+	#dec
+	rm=$(./sbox dec $pp $dk $abet)
+	if [ "$m" = "$rm" ];then
+		echo "decrypt success!"
+	else
+		echo "decrypt failed!"
+	fi
+}
+
+
+p="attr1&attr2&attr3&attr4"
+echo $p
+testPolicy $p
+
+p="attr1&attr2&(attr3|attr4|(attr11&attr10))"
+echo $p
+testPolicy $p
+
+p="attr1&attr2&(attr3|attr4|(attr11&attr10))&((attr5&attr6)|(attr7&attr8)|(attr6&attr7))"
+echo $p
+testPolicy $p
+
+p="attr1|attr2|attr3|attr4|attr21"
+echo $p
+testPolicy $p
+
+p="attr31&attr2&(attr3|attr4|(attr11&attr10))"
+echo $p
+testPolicy $p
+

@@ -1,0 +1,87 @@
+#!/bin/bash
+
+#init public parameters
+#arguement "SS512","MNT159","MNT202","MNT224","MNT359","BN160","BN256", "BN512"
+mks=$(./sbox init SS512)
+array=(${mks//,/ })
+pp=${array[0]}
+echo "pp : "
+echo $pp
+msk=${array[1]}
+echo "msk : "
+echo $msk
+#a sample output is in pp file
+
+#gen UUID for a attribute
+attr1=$(./sbox genUUID $pp)
+echo "attr1 : $attr1"
+attr2=$(./sbox genUUID $pp)
+echo "attr2 : $attr2"
+
+#gen user keys
+attrs=$attr1","$attr2
+cipher=$(./sbox genUKs $pp $msk $attrs)
+array=(${cipher//,/ })
+dk=${array[0]}
+echo "dk : "
+echo $dk
+tk=${array[1]}
+echo "tk : "
+echo $tk
+
+
+if  [ ! -n "$1" ] ;then
+    testm="Hello_World!"
+else
+    testm=$1
+fi
+#enc 
+#input pp, policy, message; the policy is combined with attributes, '&', '|', '(', ')'
+policy=${attrs//,/&}
+echo "policy : $policy"
+c=$(./sbox enc $pp $policy $testm)
+cs=(${c//,/ })
+abec=${cs[0]}
+echo "abec : "
+echo $abec
+aesc=${cs[1]}
+echo "aesc : "
+echo $aesc
+
+#trans
+abet=$(./sbox trans $pp $tk $abec)
+echo "abet : "
+echo $abet
+
+#reEnc
+abec=$(./sbox reEnc $pp $dk $abet $policy)
+echo "reEnc abec : "
+echo $abec
+
+#trans
+abet=$(./sbox trans $pp $tk $abec)
+echo "abet : "
+echo $abet
+
+#dec
+echo "dec :  $(./sbox dec $pp $dk $abet $aesc)"
+
+if [ ! -n "$2" ] ; then
+	echo "No file to encrypt!"
+else
+	#enc 
+	#input pp, policy, message; the policy is combined with attributes, '&', '|', '(', ')'
+	abec=$(./sbox encf $pp $policy $2 $2.cipher)
+	echo "abec : "
+	echo $abec
+	echo "aes cipher file -->  $2.cipher"
+
+	#trans
+	abet=$(./sbox trans $pp $tk $abec)
+	echo "abet : "
+	echo $abet
+
+	#dec
+	pl=$(./sbox decf $pp $dk $abet $2.cipher $2.plain)
+	echo "decrypted file --> $2.plain"
+fi

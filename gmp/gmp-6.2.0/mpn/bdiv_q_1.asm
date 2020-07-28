@@ -1,0 +1,1 @@
+../mpn/arm/v7a/cora15/bdiv_q_1.asm

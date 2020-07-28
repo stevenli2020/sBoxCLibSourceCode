@@ -1,0 +1,1 @@
+../mpn/arm/v7a/cora15/cnd_aors_n.asm

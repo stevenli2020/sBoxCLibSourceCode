@@ -1,0 +1,1 @@
+../mpn/arm/neon/sec_tabselect.asm

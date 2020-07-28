@@ -1,0 +1,101 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "sbox.h"
+
+int exe_test() {
+
+
+    int res;
+    char token[20] = "SS512";
+    char m[300] = "1231asdfqwsf23423123";
+    char * pp, * msk;
+    res = sbox_init(token, &pp, &msk);
+    char* gattrs[5];
+    for(int i = 0; i < 4; i++){
+        gattrs[i] = sbox_genABEUUID(pp);
+    }
+    gattrs[4] = NULL;
+    
+    char *tk, *dk;
+    res = sbox_gen_uks(pp, msk, gattrs, 2, &tk, &dk);
+    res = sbox_gen_uks(pp, msk, gattrs, 2, &tk, &dk);
+
+    size_t attrVlen = strlen(gattrs[0]);
+    char *policy = malloc(attrVlen*3*sizeof(char));
+    policy[0] = 0;
+    for(int i = 0; i < 2; i++){
+        strcat(policy, gattrs[i]);
+        if(i < 1)
+            strcat(policy, " & ");
+    }
+    printf("policy is --> %s\n",policy);
+
+    char *abec;
+    unsigned char *aesc;
+    int c_len = sbox_enc(pp, 128, policy, m, strlen(m)+1, &abec, &aesc);
+    char *abetc;
+    res = sbox_transform(pp, tk, abec, &abetc);
+    char *rm;
+    size_t mlen;
+    res = sbox_dec(pp, dk, abetc, aesc, c_len, (unsigned char **)&rm);
+    printf("%s\n",rm);
+
+    // encrypt large-size data
+    sbox_aes_t aes;
+    res = sbox_enc_init(pp, 128, policy, &abec, aes);
+    // out_len = sbox_get_update_out_len(aes, strlen(m) + 1);
+    // out_len = sbox_get_dofinal_out_len(aes, strlen(m) + 1);
+    aesc = malloc(1024);
+    // char* tmp = aesc;
+    // c_len = sbox_aes_update(aes, m, strlen(m) + 1, tmp);
+    // tmp += c_len
+    // c_len += sbox_aes_dofinal(aes, tmp);
+    c_len = sbox_aes_dofinal1(aes, m, strlen(m) + 1, aesc);
+
+    res = sbox_transform(pp, tk, abec, &abetc);
+
+    res = sbox_dec_init(pp, dk, abetc, aes);
+    // out_len = sbox_get_update_out_len(aes, c_len);
+    // out_len = sbox_get_dofinal_out_len(aes, c_len);
+    rm = malloc(1024);
+    // tmp = rm;
+    // c_len = sbox_aes_update(aes, m, strlen(m) + 1, tmp);
+    // tmp += c_len
+    // c_len += sbox_aes_dofinal(aes, tmp);
+    res = sbox_aes_dofinal1(aes, aesc, c_len, rm);
+    printf("%s\n",rm);
+
+    //re encrypt
+    res = sbox_re_enc(pp, dk, abetc, policy, &abec);
+    res = sbox_transform(pp, tk, abec, &abetc);
+    res = sbox_dec_init(pp, dk, abetc, aes);
+    res = sbox_aes_dofinal1(aes, aesc, c_len, rm);
+    printf("%s\n",rm);
+
+
+    // encrypts file
+    char* f1 = "fp.txt";
+    char* f2 = "fc.cipher";
+    char* f3 = "fp.plain";
+    res = sbox_enc_init(pp, 128, policy, &abec, aes);
+    res = sbox_aes_file(aes, f1, f2);
+
+    res = sbox_transform(pp, tk, abec, &abetc);
+
+    res = sbox_dec_init(pp, dk, abetc, aes);
+    res = sbox_aes_file(aes, f2, f3);
+
+
+    return (EXIT_SUCCESS);
+}
+
+
+int main(int argc, char** argv){
+    exe_test();
+}

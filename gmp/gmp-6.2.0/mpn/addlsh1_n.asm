@@ -1,0 +1,1 @@
+../mpn/arm/v7a/cora15/neon/aorsorrlsh1_n.asm
